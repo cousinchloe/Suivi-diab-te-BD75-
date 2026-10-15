@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5a2f86">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diabète 75+">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<title>Suivi Diabète 75+</title>
+<style>
+  :root{
+    --bg:#f5f3f8; --surface:#ffffff; --ink:#251a33; --muted:#675d75;
+    --line:#e7e1ee; --accent:#7341a6; --accent-deep:#5a2f86; --accent-soft:#f1eaf8;
+    --danger:#a83a48;
+    --low:#1f8a5b; --low-soft:#e3f3ea; --mid:#a06a12; --mid-soft:#fbf0db;
+    --high:#a83a48; --high-soft:#f7e3e6;
+    --radius:14px; --tap:46px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.45;padding-bottom:env(safe-area-inset-bottom);-webkit-font-smoothing:antialiased}
+  header.topbar{position:sticky;top:0;z-index:30;
+    background:linear-gradient(180deg,var(--accent-deep),var(--accent));color:#fff;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;box-shadow:0 2px 10px rgba(90,47,134,.18)}
+  .topbar-row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .brand{display:flex;flex-direction:column;line-height:1.15}
+  .brand b{font-size:18px;font-weight:700;letter-spacing:-.2px}
+  .brand span{font-size:12px;opacity:.85;font-weight:500}
+  .iconbtn{background:rgba(255,255,255,.16);border:none;color:#fff;min-width:var(--tap);height:var(--tap);
+    border-radius:12px;font-size:16px;font-weight:700;padding:0 14px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center}
+  .iconbtn.ghost{background:transparent}
+  .wrap{max-width:680px;margin:0 auto;padding:16px}
+  .toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:var(--tap);
+    border-radius:12px;padding:0 14px;font-size:14px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;justify-content:center}
+  .btn:active{transform:scale(.97)}
+  .btn:focus-visible{outline:3px solid var(--accent-soft);outline-offset:2px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{color:var(--danger);border-color:#eccfd3}
+  .btn.block{flex:1}
+  .btn.small{min-height:36px;font-size:13px;padding:0 11px}
+  .count{font-size:13px;color:var(--muted);margin:2px 2px 12px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;
+    justify-content:space-between;gap:12px}
+  .card h3{margin:0;font-size:16px;font-weight:700}
+  .card small{color:var(--muted);font-size:13px;display:block}
+  .card .chev{color:var(--muted);font-size:20px}
+  .card .right{display:flex;align-items:center;gap:8px}
+  .empty{text-align:center;color:var(--muted);padding:46px 20px;
+    border:1px dashed var(--line);border-radius:var(--radius);background:var(--surface)}
+  .empty b{display:block;color:var(--ink);margin-bottom:6px}
+
+  .status{border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:600;
+    background:var(--low-soft);color:var(--low);border:1px solid #c9e7d6}
+  .status.warn{background:var(--high-soft);color:var(--high);border-color:#eccfd3}
+  .status.pending{background:var(--accent-soft);color:var(--accent-deep);border-color:#ddd0ec}
+  .status ul{margin:6px 0 0;padding-left:18px;font-weight:500}
+
+  details.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:10px;overflow:hidden}
+  details.sec>summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:700;font-size:15px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px}
+  details.sec>summary::-webkit-details-marker{display:none}
+  details.sec>summary .arrow{color:var(--muted);transition:transform .18s}
+  details.sec[open]>summary .arrow{transform:rotate(90deg)}
+  details.sec>summary .lbl{display:flex;align-items:center;gap:10px}
+  details.sec>summary .tick{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+  details.sec.filled>summary .tick{background:var(--accent)}
+  .sec-body{padding:4px 16px 16px;border-top:1px solid var(--line)}
+  .sec-note{font-size:13px;color:var(--muted);margin:12px 0 0;line-height:1.4}
+  .badge{font-size:12px;font-weight:700;padding:4px 9px;border-radius:20px;background:var(--accent-soft);color:var(--accent-deep);white-space:nowrap}
+  .badge.low{background:var(--low-soft);color:var(--low)}
+  .badge.high{background:var(--high-soft);color:var(--high)}
+  .field{margin-top:14px}
+  .field>label,.field>.flabel{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .field input[type=text],.field input[type=date],.field input[type=time],.field input[type=month],
+  .field input[type=tel],.field textarea{
+    width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font-size:16px;
+    font-family:inherit;color:var(--ink);background:#fdfcfe;min-height:46px}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .field textarea{min-height:70px;resize:vertical;line-height:1.4}
+  .stack{display:flex;flex-direction:column;gap:6px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg .opt{flex:1;min-width:80px}
+  .opt{position:relative}
+  .opt input{position:absolute;opacity:0;pointer-events:none}
+  .opt label{display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;
+    min-height:44px;padding:8px 13px;border-radius:11px;border:1px solid var(--line);
+    background:#fdfcfe;font-size:15px;font-weight:500;color:var(--ink);cursor:pointer;line-height:1.3}
+  .stack .opt label{justify-content:flex-start;text-align:left}
+  .opt input:checked + label{background:var(--accent);border-color:var(--accent);color:#fff}
+  .opt.risk input:checked + label{background:var(--high);border-color:var(--high)}
+  .opt input:focus-visible + label{outline:3px solid var(--accent-soft);outline-offset:2px}
+  .field>label.check,.check{display:flex;margin:0;color:var(--ink);font-weight:500;align-items:center;gap:10px;min-height:46px;padding:8px 13px;border:1px solid var(--line);
+    border-radius:11px;background:#fdfcfe;font-size:15px;cursor:pointer}
+  .check input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+  .alert{margin-top:8px;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;
+    background:var(--mid-soft);color:var(--mid)}
+  .alert.red{background:var(--high-soft);color:var(--high)}
+  .row2{display:flex;gap:10px}
+  .row2 .field{flex:1;min-width:0}
+  .formactions{position:sticky;bottom:0;
+    background:linear-gradient(180deg,rgba(245,243,248,0),var(--bg) 26%);
+    padding:14px 0 10px;display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .modal-bg{position:fixed;inset:0;background:rgba(37,26,51,.45);display:none;
+    align-items:flex-end;justify-content:center;z-index:50}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--surface);width:100%;max-width:680px;border-radius:18px 18px 0 0;
+    padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:88vh;overflow:auto}
+  .modal h2{margin:0 0 4px;font-size:18px}
+  .modal p{color:var(--muted);font-size:14px;margin:4px 0 14px}
+  .modal .info-block{font-size:14px;line-height:1.55}
+  .modal .info-block b{color:var(--accent-deep)}
+  .rep-h{font-size:17px;font-weight:700;padding:0 0 10px;border-bottom:2px solid var(--accent);margin-bottom:12px;
+    display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .rep-h span{font-size:13px;font-weight:600;color:var(--muted)}
+  .rep-sec{margin-bottom:16px}
+  .rep-sec h3{font-size:14px;margin:0 0 6px;color:var(--accent-deep)}
+  .rep-sec ul{list-style:none;margin:0;padding:0}
+  .rep-sec li{padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.35}
+  .rep-v{display:block;font-size:15.5px;font-weight:600;color:var(--ink);margin-top:2px}
+  .rep-v.risk{color:var(--high)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);
+    background:var(--ink);color:#fff;padding:11px 18px;border-radius:30px;font-size:14px;font-weight:600;
+    z-index:60;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  .hidden{display:none!important}
+  #printArea{display:none}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  @media print{
+    @page{size:A4;margin:10mm 11mm}
+    body{background:#fff;font-size:9.5pt}
+    .topbar,#listView,#formView,.modal-bg,.toast{display:none!important}
+    #printArea{display:block!important}
+    .p-doc{color:#000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+    .p-head{border-bottom:2px solid #5a2f86;padding-bottom:5px;margin-bottom:8px}
+    .p-head h1{margin:0 0 2px;font-size:14pt;color:#5a2f86}
+    .p-head .p-meta{font-size:9.5pt;color:#333}
+    .p-status{margin:0 0 8px;padding:4px 7px;border-left:3px solid #1f8a5b;background:#eef7f1;font-size:9pt;font-weight:600}
+    .p-status.warn{border-color:#a83a48;background:#f9ecee}
+    .p-cols{column-count:2;column-gap:7mm}
+    .p-sec{margin-bottom:7px;break-inside:avoid;page-break-inside:avoid}
+    .p-sec h2{font-size:10pt;margin:0 0 3px;padding:3px 6px;background:#f1eaf8;color:#5a2f86;border-radius:3px}
+    table.p-tab{width:100%;border-collapse:collapse;font-size:8.8pt}
+    table.p-tab td{border-bottom:1px solid #e6e0ee;padding:2px 5px;vertical-align:top}
+    td.p-lbl{width:50%;color:#333}
+    td.p-val{font-weight:600;white-space:pre-wrap}
+    .p-foot{margin-top:8px;padding-top:5px;border-top:1px solid #ccc;font-size:7.5pt;color:#555}
+    .p-sign{margin-top:8px;display:flex;gap:12px}
+    .p-sign div{flex:1;border:1px solid #bbb;border-radius:4px;height:42px;padding:3px 6px;font-size:7.5pt;color:#666}
+  }
+  .hint{font-size:13px;font-weight:600;margin-top:6px;color:var(--muted)}
+  .hint.ok{color:var(--low)} .hint.late{color:var(--high)}
+  .row3{display:flex;gap:8px} .row3 .field{flex:1;min-width:0}
+  .carry{font-size:12.5px;color:var(--accent-deep);background:var(--accent-soft);border-radius:10px;padding:8px 11px;margin:0 0 12px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <b>Suivi Diabète 75+</b>
+      <span>Séance hebdomadaire · hors-ligne · v1</span>
+    </div>
+    <button class="iconbtn ghost" id="btnInfo" title="Confidentialité et mode d'emploi">i</button>
+  </div>
+</header>
+
+<main class="wrap" id="listView">
+  <div class="toolbar">
+    <button class="btn primary block" id="btnNew">+ Nouvelle séance</button>
+    <button class="btn" id="btnExport">Sauvegarde</button>
+    <button class="btn" id="btnImport">Importer</button>
+    <input type="file" id="fileInput" accept="application/json,.json" class="hidden">
+  </div>
+  <div class="count" id="count"></div>
+  <div id="cards"></div>
+</main>
+
+<main class="wrap hidden" id="formView">
+  <button class="btn" id="btnBack" style="margin-bottom:14px">‹ Liste</button>
+  <div id="carryBox"></div>
+  <div id="statusBox"></div>
+  <div id="formFields"></div>
+  <div class="formactions">
+    <button class="btn primary block" id="btnSave">Enregistrer</button>
+    <button class="btn block" id="btnTxt">📋 Copier pour transmissions</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn block" id="btnImg">📷 Image pour le dossier</button>
+    <button class="btn block" id="btnPdf">Créer le PDF</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn block" id="btnNext">↻ Séance suivante (même patient)</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:28px">
+    <button class="btn block" id="btnShareOne">Exporter (fichier)</button>
+    <button class="btn danger block" id="btnDelete">Supprimer</button>
+  </div>
+</main>
+
+<div id="printArea"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* Toutes les données restent dans ce téléphone. Aucune requête réseau.
+   Clés distinctes des autres outils (même domaine github.io). */
+const STORE_KEY="suivi_diabete75_v1";
+const NURSE_KEY="suivi_diabete75_infirmiere_v1";
+const UNIT_KEY="suivi_diabete75_unite_v1";
+const $=s=>document.querySelector(s);
+const YN=["Non","Oui"];
+/* Champs repris automatiquement d'une séance à l'autre pour un même patient */
+const CARRY=["ddn","medecin","traitement","hba1c","hba1c_date"];
+
+const SCHEMA=[
+ { title:"Séance", fields:[
+   {id:"ident",  label:"Patient (nom / initiales)", type:"text", ph:"ex. MARTIN J.", list:"patList"},
+   {id:"daterec",label:"Date", type:"date", half:true},
+   {id:"ddn",    label:"Date de naissance", type:"date", half:true},
+   {id:"infirmiere", label:"Infirmière", type:"text", ph:"ex. C. COUSIN"},
+ ]},
+ { title:"Constantes", fields:[
+   {id:"ta",    label:"TA", type:"text", ph:"13/8", third:true},
+   {id:"pouls", label:"Pouls", type:"text", num:true, ph:"bpm", third:true},
+   {id:"poids", label:"Poids (kg)", type:"text", dec:true, third:true},
+ ]},
+ { title:"Glycémies (moyennes du lecteur)", fields:[
+   {id:"unite", label:"Unité du lecteur", type:"seg", opts:["g/L","mg/dL"]},
+   {id:"moy7",  label:"Moy. 7 j", type:"text", dec:true, third:true},
+   {id:"moy14", label:"Moy. 14 j", type:"text", dec:true, third:true},
+   {id:"moy30", label:"Moy. 30 j", type:"text", dec:true, third:true},
+   {id:"hypo",  label:"Hypoglycémie(s) depuis la dernière séance ?", type:"yn", risk:true},
+   {id:"hypo_d",label:"Combien, quand, resucrage", type:"text", showIf:["hypo","Oui"]},
+ ]},
+ { title:"HbA1c (tous les 3 mois)", fields:[
+   {id:"hba1c",      label:"Dernière HbA1c (%)", type:"text", dec:true, half:true},
+   {id:"hba1c_date", label:"Date du résultat", type:"date", half:true},
+ ]},
+ { title:"Traitement", fields:[
+   {id:"traitement", label:"Insuline / traitement", type:"text", ph:"ex. Lantus 14 UI le soir"},
+   {id:"observance", label:"Observance", type:"seg", opts:["Bonne","Oublis","Erreurs de dose"]},
+   {id:"obs_d",      label:"Précisions", type:"text", showIf:["observance","!Bonne"]},
+ ]},
+ { title:"Directives", fields:[
+   {id:"adapt",     label:"Adaptation de la dose d'insuline ?", type:"yn"},
+   {id:"dose_av",   label:"Dose actuelle", type:"text", ph:"ex. 14 UI", half:true, showIf:["adapt","Oui"]},
+   {id:"dose_ap",   label:"Nouvelle dose", type:"text", ph:"ex. 12 UI", half:true, showIf:["adapt","Oui"]},
+   {id:"dose_proto",label:"Selon le protocole prescrit", type:"check", showIf:["adapt","Oui"]},
+   {id:"consignes", label:"Consignes données au patient / à l'aidant", type:"textarea"},
+ ]},
+ { title:"Alimentation", fields:[
+   {id:"appetit", label:"Appétit", type:"seg", opts:["Bon","Diminué","Mauvais"]},
+ ]},
+ { title:"Jambes et pieds", fields:[
+   {id:"oedemes", label:"Œdèmes", type:"seg", opts:["Aucun","Légers","Importants"]},
+   {id:"plaie",   label:"Plaie ou lésion aux pieds / jambes ?", type:"yn", risk:true},
+   {id:"plaie_d", label:"Localisation, aspect", type:"text", showIf:["plaie","Oui"]},
+   {id:"pieds_vus", label:"Pieds examinés (chaussures retirées)", type:"check"},
+ ]},
+ { title:"Observations et suite", fields:[
+   {id:"obs",     label:"Observations / éducation", type:"textarea"},
+   {id:"alerte",  label:"Médecin traitant prévenu ?", type:"yn"},
+   {id:"alerte_d",label:"Motif", type:"text", showIf:["alerte","Oui"]},
+   {id:"medecin", label:"Médecin traitant", type:"text"},
+ ]},
+];
+const FIELDS=SCHEMA.flatMap(s=>s.fields);
+const F=id=>FIELDS.find(f=>f.id===id);
+
+let fiches=load(), currentId=null;
+
+function load(){ try{return JSON.parse(localStorage.getItem(STORE_KEY))||[];}catch(e){return[];} }
+function persist(){ try{localStorage.setItem(STORE_KEY,JSON.stringify(fiches));}
+  catch(e){toast("Stockage saturé — faites une sauvegarde");} }
+function lsGet(k){ try{return localStorage.getItem(k)||"";}catch(e){return"";} }
+function lsSet(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+const p2=n=>String(n).padStart(2,"0");
+function iso(d){ return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate()); }
+function today(){ return iso(new Date()); }
+function fmtDate(s){ if(!s)return""; const p=s.split("-"); return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:s; }
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+function keyOf(n){ return String(n||"").trim().toLowerCase().replace(/\s+/g," "); }
+function age(ddn,ref){ if(!ddn) return ""; const a=new Date(ddn), r=new Date(ref||today());
+  let y=r.getFullYear()-a.getFullYear(); if(r.getMonth()<a.getMonth()||(r.getMonth()===a.getMonth()&&r.getDate()<a.getDate())) y--; return y>0?y:""; }
+function plus3Months(s){ if(!s) return ""; const [y,m,d]=s.split("-").map(Number);
+  const t=new Date(y,m-1+3,1); const last=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
+  t.setDate(Math.min(d,last)); return iso(t); }
+function hbaState(d){
+  if(!d.hba1c_date) return null;
+  const next=plus3Months(d.hba1c_date), ref=d.daterec||today();
+  return {next, late: next<=ref};
+}
+function lastOf(ident,exceptId){
+  const k=keyOf(ident); if(!k) return null;
+  return fiches.filter(f=>keyOf(f.ident)===k&&f.id!==exceptId)
+    .sort((a,b)=>(b.daterec||"").localeCompare(a.daterec||"")||(b._updated||0)-(a._updated||0))[0]||null;
+}
+
+/* ---------- Directives ---------- */
+function directives(d){
+  const L=[];
+  if(d.adapt==="Oui"&&(d.dose_av||d.dose_ap))
+    L.push("Dose d'insuline : "+(d.dose_av||"?")+" → "+(d.dose_ap||"?")+(d.dose_proto?" (selon protocole prescrit)":""));
+  if(d.consignes) L.push("Consignes : "+d.consignes);
+  return L;
+}
+
+/* ---------- Vérifications ---------- */
+function checks(d){
+  const warn=[], info=[], todo=[];
+  if(d.hypo==="Oui") warn.push("Hypoglycémie"+(d.hypo_d?" : "+d.hypo_d:""));
+  if(d.plaie==="Oui") warn.push("Plaie / lésion"+(d.plaie_d?" : "+d.plaie_d:""));
+  if(d.oedemes==="Importants") warn.push("Œdèmes importants");
+  if(d.appetit==="Mauvais") warn.push("Appétit mauvais");
+  if(d.observance&&d.observance!=="Bonne") warn.push("Observance : "+d.observance.toLowerCase()+(d.obs_d?" ("+d.obs_d+")":""));
+  const h=hbaState(d);
+  if(h&&h.late) info.push("HbA1c à refaire (prévue vers le "+fmtDate(h.next)+")");
+  if(d.adapt==="Oui"&&d.dose_ap) info.push("Dose modifiée : "+(d.dose_av||"?")+" → "+d.dose_ap);
+  if(d.alerte==="Oui") info.push("Médecin prévenu"+(d.alerte_d?" : "+d.alerte_d:""));
+  if(!d.ident) todo.push("Patient");
+  if(!d.ta) todo.push("TA");
+  if(!d.moy7) todo.push("Moyenne glycémie 7 j");
+  if(!d.hypo) todo.push("Hypoglycémies");
+  if(!d.plaie) todo.push("Plaie / lésion");
+  if(!d.hba1c_date) todo.push("Date de la dernière HbA1c");
+  return {warn,info,todo};
+}
+function statusHTML(d){
+  const {warn,info,todo}=checks(d);
+  let h="";
+  if(warn.length) h+='<div class="status warn">Points d\'attention<ul>'+warn.map(w=>'<li>'+esc(w)+'</li>').join("")+'</ul></div>';
+  if(info.length) h+='<div class="status pending">À noter<ul>'+info.map(w=>'<li>'+esc(w)+'</li>').join("")+'</ul></div>';
+  if(!warn.length&&todo.length) h+='<div class="status pending">Reste à renseigner<ul>'+todo.map(w=>'<li>'+esc(w)+'</li>').join("")+'</ul></div>';
+  if(!h) h='<div class="status">Séance complète — rien de particulier</div>';
+  return h;
+}
+
+/* ---------- Liste ---------- */
+function renderList(){
+  const cards=$("#cards");
+  $("#count").textContent=fiches.length?fiches.length+(fiches.length>1?" séances enregistrées":" séance enregistrée"):"";
+  if(!fiches.length){
+    cards.innerHTML='<div class="empty"><b>Aucune séance pour l\'instant</b>Touchez « Nouvelle séance » pour démarrer.</div>'; return;
+  }
+  const sorted=[...fiches].sort((a,b)=>(b.daterec||"").localeCompare(a.daterec||"")||(b._updated||0)-(a._updated||0));
+  cards.innerHTML=sorted.map(r=>{
+    const c=checks(r);
+    const b=c.warn.length?'<span class="badge high">Attention</span>':'<span class="badge low">OK</span>';
+    const sub=(r.daterec?fmtDate(r.daterec):"Sans date")+(r.moy7?" · moy. 7 j "+r.moy7:"");
+    return '<div class="card" data-id="'+r.id+'"><div><h3>'+esc(r.ident||"Sans nom")+'</h3><small>'+esc(sub)+'</small></div><div class="right">'+b+'<span class="chev">›</span></div></div>';
+  }).join("");
+  cards.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>openFiche(c.dataset.id)));
+}
+
+/* ---------- Formulaire ---------- */
+function buildForm(){
+  const pats=[...new Map(fiches.filter(f=>f.ident).map(f=>[keyOf(f.ident),f.ident])).values()];
+  $("#formFields").innerHTML='<datalist id="patList">'+pats.map(v=>'<option value="'+esc(v)+'">').join("")+'</datalist>'
+   +SCHEMA.map((sec,i)=>{
+    let body="", buf=[], kind="";
+    const flush=()=>{ if(buf.length){ body+='<div class="'+(kind==="third"?"row3":"row2")+'">'+buf.join("")+'</div>'; buf=[]; } };
+    sec.fields.forEach(f=>{
+      const h=fieldHTML(f), k=f.half?"half":(f.third?"third":"");
+      if(k){ if(kind!==k) flush(); kind=k; buf.push(h); if(buf.length===(k==="third"?3:2)) flush(); }
+      else { flush(); body+=h; }
+    });
+    flush();
+    if(sec.title.startsWith("HbA1c")) body+='<div class="hint" id="hbaHint"></div>';
+    return '<details class="sec" open data-sec="'+i+'"><summary><span class="lbl"><span class="tick"></span>'+esc(sec.title)
+      +'</span><span class="arrow">›</span></summary><div class="sec-body">'+body+'</div></details>';
+  }).join("");
+  $("#formFields").querySelectorAll("input,textarea").forEach(el=>{
+    el.addEventListener("input",afterChange); el.addEventListener("change",afterChange);
+  });
+  $("#ident").addEventListener("change",()=>{ if(!currentId) carryFrom(lastOf($("#ident").value)); });
+}
+function fieldHTML(f){
+  const w=' id="w_'+f.id+'"';
+  if(f.type==="textarea") return '<div class="field"'+w+'><label for="'+f.id+'">'+esc(f.label)+'</label><textarea id="'+f.id+'"></textarea></div>';
+  if(f.type==="check") return '<div class="field"'+w+'><label class="check"><input type="checkbox" id="'+f.id+'"><span>'+esc(f.label)+'</span></label></div>';
+  if(f.type==="yn"||f.type==="seg"){
+    const opts=f.type==="yn"?YN:f.opts;
+    return '<div class="field"'+w+'><span class="flabel">'+esc(f.label)+'</span><div class="seg">'
+      +opts.map((o,k)=>'<span class="opt'+(f.risk&&o==="Oui"?" risk":"")+'"><input type="radio" name="'+f.id+'" id="'+f.id+'_'+k+'" value="'+esc(o)+'"><label for="'+f.id+'_'+k+'">'+esc(o)+'</label></span>').join("")
+      +'</div></div>';
+  }
+  const extra=(f.list?' list="'+f.list+'"':"")+(f.num?' inputmode="numeric"':"")+(f.dec?' inputmode="decimal"':"");
+  return '<div class="field"'+w+'><label for="'+f.id+'">'+esc(f.label)+'</label><input type="'+f.type+'" id="'+f.id+'"'+(f.ph?' placeholder="'+esc(f.ph)+'"':"")+extra+' autocomplete="off"></div>';
+}
+function getVal(f){
+  if(f.type==="yn"||f.type==="seg"){ const c=document.querySelector('input[name="'+f.id+'"]:checked'); return c?c.value:""; }
+  const el=document.getElementById(f.id); if(!el) return "";
+  return f.type==="check"?el.checked:el.value.trim();
+}
+function setVal(f,v){
+  if(f.type==="yn"||f.type==="seg"){
+    const opts=f.type==="yn"?YN:f.opts;
+    document.querySelectorAll('input[name="'+f.id+'"]').forEach(e=>e.checked=false);
+    if(v){ const el=document.getElementById(f.id+"_"+opts.indexOf(v)); if(el) el.checked=true; }
+  } else if(f.type==="check") document.getElementById(f.id).checked=!!v;
+  else document.getElementById(f.id).value=v==null?"":v;
+}
+function visible(f){
+  if(!f.showIf) return true;
+  const v=getVal(F(f.showIf[0])), want=f.showIf[1];
+  return want.startsWith("!")?(v!==""&&v!==want.slice(1)):v===want;
+}
+function loadValues(rec){ FIELDS.forEach(f=>setVal(f,rec[f.id])); afterChange(); }
+function collectValues(){
+  const out={};
+  FIELDS.forEach(f=>{ out[f.id]=visible(f)?getVal(f):(f.type==="check"?false:""); });
+  return out;
+}
+function afterChange(){
+  FIELDS.forEach(f=>{ if(f.showIf) $("#w_"+f.id).classList.toggle("hidden",!visible(f)); });
+  const d=collectValues();
+  const u=d.unite||"g/L";
+  ["moy7","moy14","moy30"].forEach(k=>{ const l=document.querySelector('label[for="'+k+'"]'); if(l) l.textContent=F(k).label+" ("+u+")"; });
+  const h=hbaState(d), hint=$("#hbaHint");
+  if(hint){
+    if(!h){ hint.className="hint"; hint.textContent=d.hba1c?"Indiquez la date du résultat pour calculer la prochaine.":""; }
+    else { hint.className="hint "+(h.late?"late":"ok");
+      hint.textContent=h.late?"À refaire : prévue vers le "+fmtDate(h.next):"Prochaine HbA1c vers le "+fmtDate(h.next); }
+  }
+  SCHEMA.forEach((sec,i)=>{
+    const det=document.querySelector('details[data-sec="'+i+'"]'); if(!det) return;
+    det.classList.toggle("filled",sec.fields.some(f=>{ const v=d[f.id]; return v===true||(typeof v==="string"&&v!==""&&f.id!=="daterec"&&f.id!=="unite"&&f.id!=="infirmiere"); }));
+  });
+  $("#statusBox").innerHTML=statusHTML(d);
+}
+function carryFrom(prev){
+  $("#carryBox").innerHTML="";
+  if(!prev) return;
+  let n=0;
+  CARRY.forEach(k=>{ const f=F(k), cur=getVal(f); if(!cur&&prev[k]){ setVal(f,prev[k]); n++; } });
+  if(prev.unite) setVal(F("unite"),prev.unite);
+  afterChange();
+  let msg=n?'Repris de la séance du '+fmtDate(prev.daterec)+' : date de naissance, traitement, HbA1c, médecin. Vérifiez s\'ils ont changé.':"";
+  if(prev.adapt==="Oui"&&prev.dose_ap) msg+=(msg?"<br>":"")+'<b>Dose modifiée le '+fmtDate(prev.daterec)+' : '+esc(prev.dose_av||"?")+' → '+esc(prev.dose_ap)+'.</b> Pensez à mettre à jour le traitement.';
+  if(prev.consignes) msg+=(msg?"<br>":"")+'Consignes précédentes : '+esc(prev.consignes);
+  if(msg) $("#carryBox").innerHTML='<div class="carry">'+msg+'</div>';
+}
+
+function showForm(){ $("#listView").classList.add("hidden"); $("#formView").classList.remove("hidden"); window.scrollTo(0,0); }
+function showList(){ $("#formView").classList.add("hidden"); $("#listView").classList.remove("hidden"); window.scrollTo(0,0); }
+
+function newFiche(ident){
+  currentId=null; showForm(); buildForm(); $("#carryBox").innerHTML="";
+  loadValues({ident:ident||"",daterec:today(),infirmiere:lsGet(NURSE_KEY),unite:lsGet(UNIT_KEY)||"g/L"});
+  if(ident) carryFrom(lastOf(ident));
+}
+function openFiche(id){ currentId=id; const r=fiches.find(x=>x.id===id)||{}; showForm(); buildForm(); $("#carryBox").innerHTML=""; loadValues(r); }
+function saveCurrent(goBack){
+  const data=collectValues(), now=Date.now();
+  if(currentId){ const i=fiches.findIndex(r=>r.id===currentId); fiches[i]={...fiches[i],...data,_updated:now}; }
+  else { currentId=uid(); fiches.push({id:currentId,...data,_created:now,_updated:now}); }
+  if(data.infirmiere) lsSet(NURSE_KEY,data.infirmiere);
+  if(data.unite) lsSet(UNIT_KEY,data.unite);
+  persist();
+  if(goBack){ showList(); renderList(); toast("Séance enregistrée"); }
+}
+function deleteCurrent(){
+  if(!currentId){ showList(); return; }
+  if(!confirm("Supprimer définitivement cette séance ?")) return;
+  fiches=fiches.filter(r=>r.id!==currentId); persist(); showList(); renderList(); toast("Séance supprimée");
+}
+
+/* ---------- Texte pour les transmissions ---------- */
+function buildText(d){
+  const L=[], u=d.unite||"g/L", j=a=>a.filter(Boolean).join(" · ");
+  L.push("Surveillance diabète 75+ du "+fmtDate(d.daterec||today())+(d.infirmiere?" ("+d.infirmiere+")":""));
+  const c=j([d.ta?"TA "+d.ta:"",d.pouls?"pouls "+d.pouls:"",d.poids?"poids "+d.poids+" kg":""]); if(c) L.push(c);
+  const g=j([d.moy7?"7 j "+d.moy7:"",d.moy14?"14 j "+d.moy14:"",d.moy30?"30 j "+d.moy30:""]);
+  if(g) L.push("Glycémies moy. : "+g+" "+u);
+  if(d.hypo) L.push("Hypoglycémie : "+(d.hypo==="Oui"?"OUI"+(d.hypo_d?" — "+d.hypo_d:""):"non"));
+  if(d.hba1c){ const h=hbaState(d); L.push("HbA1c "+d.hba1c+" %"+(d.hba1c_date?" ("+fmtDate(d.hba1c_date)+")":"")+(h?(h.late?" — À REFAIRE":" — prochaine vers "+fmtDate(h.next)):"")); }
+  const t=j([d.traitement?"Traitement : "+d.traitement:"",d.observance?"observance "+d.observance.toLowerCase()+(d.obs_d?" ("+d.obs_d+")":""):""]); if(t) L.push(t);
+  directives(d).forEach(x=>L.push("➜ "+x.replace(/^Dose d'insuline/,"DOSE INSULINE").replace(/^Consignes/,"CONSIGNES")));
+  if(d.appetit) L.push("Appétit "+d.appetit.toLowerCase());
+  const p=j([d.oedemes?"Œdèmes : "+d.oedemes.toLowerCase():"",d.plaie?(d.plaie==="Oui"?"PLAIE"+(d.plaie_d?" : "+d.plaie_d:""):"pas de plaie"):"",d.pieds_vus?"pieds examinés":""]); if(p) L.push(p);
+  if(d.obs) L.push("Obs : "+d.obs);
+  if(d.alerte) L.push("Médecin prévenu : "+(d.alerte==="Oui"?"oui"+(d.alerte_d?" — "+d.alerte_d:""):"non"));
+  return L.join("\n");
+}
+function copyText(){
+  saveCurrent(false);
+  const txt=buildText(collectValues());
+  const done=()=>toast("Texte copié — collez-le dans les transmissions");
+  const manual=()=>{
+    openModal('<h2>Texte pour les transmissions</h2><p>Sélectionnez puis copiez le texte.</p><textarea id="txtOut" style="width:100%;min-height:220px;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:15px;font-family:inherit">'+esc(txt)+'</textarea><button class="btn primary block" id="closeM" style="margin-top:10px;width:100%">Fermer</button>');
+    $("#closeM").addEventListener("click",closeModal); const ta=$("#txtOut"); ta.focus(); ta.select();
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done,manual); else manual();
+}
+
+/* ---------- Lignes communes (image, PDF) ---------- */
+function rowsFor(sec,d){
+  const rows=[];
+  if(sec.title==="Directives") return rows;
+  sec.fields.forEach(f=>{
+    if(["ident","daterec","ddn","infirmiere","unite"].includes(f.id)) return;
+    let v=d[f.id]; if(f.type==="check") v=v?"Oui":""; if(f.type==="date") v=fmtDate(v);
+    if(v===""||v==null) return;
+    if(["moy7","moy14","moy30"].includes(f.id)) v=v+" "+(d.unite||"g/L");
+    if(f.id==="hba1c") v=v+" %";
+    if(f.id==="poids") v=v+" kg";
+    const r={label:f.label.replace(/ \?$/,"").replace(/ \((kg|%)\)$/,""),value:v,risk:!!(f.risk&&v==="Oui")};
+    if(f.id==="hba1c_date"){ const h=hbaState(d); if(h){ r.sub=h.late?"À refaire (prévue vers le "+fmtDate(h.next)+")":"Prochaine vers le "+fmtDate(h.next); r.subRisk=h.late; } }
+    rows.push(r);
+  });
+  return rows;
+}
+function headerLine(d){
+  const a=age(d.ddn,d.daterec);
+  return [d.ddn?"Né(e) le "+fmtDate(d.ddn)+(a?" ("+a+" ans)":""):"","Séance du "+fmtDate(d.daterec||today()),d.infirmiere?"IDE : "+d.infirmiere:""].filter(Boolean).join("  ·  ");
+}
+
+/* ---------- PDF (impression navigateur, 1 page) ---------- */
+function buildPrintHTML(){
+  const d=collectValues(), c=checks(d);
+  let h='<div class="p-doc"><div class="p-head"><h1>Surveillance diabète — patient insulino-traité de plus de 75 ans</h1><div class="p-meta"><b>'+esc(d.ident||"Patient non identifié")+'</b><br>'+esc(headerLine(d))+'</div></div>';
+  h+=c.warn.length?'<div class="p-status warn">Points d\'attention : '+c.warn.map(esc).join(" · ")+'</div>':'<div class="p-status">Rien de particulier relevé lors de la séance.</div>';
+  const dir=directives(d);
+  if(dir.length) h+='<div style="margin:0 0 8px;padding:5px 8px;border:1.5px solid #5a2f86;border-radius:4px;background:#f6f1fb;font-size:9.5pt"><b style="color:#5a2f86">Directives</b><br>'+dir.map(x=>esc(x)).join("<br>")+'</div>';
+  h+='<div class="p-cols">';
+  SCHEMA.forEach(sec=>{
+    const rows=rowsFor(sec,d); if(!rows.length) return;
+    h+='<div class="p-sec"><h2>'+esc(sec.title)+'</h2><table class="p-tab">'+rows.map(r=>'<tr><td class="p-lbl">'+esc(r.label)+'</td><td class="p-val"'+(r.risk?' style="color:#a83a48"':'')+'>'+esc(r.value)
+      +(r.sub?'<br><i style="font-weight:400;font-size:8pt;color:'+(r.subRisk?'#a83a48':'#555')+'">'+esc(r.sub)+'</i>':'')+'</td></tr>').join("")+'</table></div>';
+  });
+  h+='</div><div class="p-foot">Données de santé à caractère personnel — édité le '+fmtDate(today())+' · Suivi Diabète 75+</div></div>';
+  return h;
+}
+function doPrint(){
+  saveCurrent(false);
+  $("#printArea").innerHTML=buildPrintHTML();
+  const d=collectValues(), old=document.title;
+  document.title="Diabete75_"+(d.ident||"seance").replace(/[^a-z0-9]/gi,"-").replace(/-+/g,"-")+"_"+(d.daterec||today());
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ document.title=old; },1200); },80);
+}
+
+/* ---------- Image JPEG pour le dossier patient ---------- */
+function wrapText(ctx,text,maxW){
+  const out=[];
+  String(text).split("\n").forEach(par=>{ let line="";
+    par.split(" ").forEach(w=>{ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW&&line){ out.push(line); line=w; } else line=t; });
+    out.push(line); });
+  return out;
+}
+function renderImage(){
+  const d=collectValues(), c=checks(d);
+  const W=1080, P=48, FF='-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  const cv=document.createElement("canvas"), ctx=cv.getContext("2d");
+  const font=(w,s)=>{ ctx.font=w+" "+s+"px "+FF; };
+  const secs=SCHEMA.map(sec=>({title:sec.title,rows:rowsFor(sec,d)})).filter(s=>s.rows.length);
+  const st=c.warn.length?["Points d'attention :"].concat(c.warn.map(w=>"• "+w)):["Rien de particulier relevé lors de la séance."];
+  const LW=380, VX=P+LW+20, VW=W-VX-P;
+  function layout(draw){
+    if(draw){ ctx.fillStyle="#5a2f86"; ctx.fillRect(0,0,W,190); }
+    font("700",40); if(draw){ ctx.fillStyle="#fff"; ctx.fillText("Surveillance diabète 75+",P,70); }
+    font("700",34); if(draw) ctx.fillText(d.ident||"Patient non identifié",P,120);
+    font("400",25); if(draw){ ctx.fillStyle="rgba(255,255,255,.88)"; ctx.fillText(headerLine(d),P,162); }
+    let y=220;
+    font("600",26); const sl=[]; st.forEach(s=>sl.push(...wrapText(ctx,s,W-2*P-40)));
+    const sh=24+sl.length*36+12;
+    if(draw){ ctx.fillStyle=c.warn.length?"#f7e3e6":"#e3f3ea"; ctx.fillRect(P,y,W-2*P,sh);
+      ctx.fillStyle=c.warn.length?"#a83a48":"#1f8a5b"; ctx.fillRect(P,y,8,sh); sl.forEach((l,i)=>ctx.fillText(l,P+28,y+46+i*36)); }
+    y+=sh+20;
+    const dir=directives(d);
+    if(dir.length){
+      font("600",26); const dl=[]; dir.forEach(x=>dl.push(...wrapText(ctx,x,W-2*P-48)));
+      const dh=24+36+dl.length*36+10;
+      if(draw){
+        ctx.fillStyle="#f6f1fb"; ctx.fillRect(P,y,W-2*P,dh);
+        ctx.strokeStyle="#5a2f86"; ctx.lineWidth=3; ctx.strokeRect(P+1.5,y+1.5,W-2*P-3,dh-3);
+        font("700",27); ctx.fillStyle="#5a2f86"; ctx.fillText("Directives",P+24,y+42);
+        font("600",26); ctx.fillStyle="#251a33"; dl.forEach((l,i)=>ctx.fillText(l,P+24,y+42+36+i*36));
+      }
+      y+=dh+20;
+    }
+    y+=8;
+    secs.forEach(s=>{
+      if(draw){ ctx.fillStyle="#f1eaf8"; ctx.fillRect(P,y,W-2*P,50); ctx.fillStyle="#5a2f86"; font("700",27); ctx.fillText(s.title,P+18,y+35); }
+      y+=50+4;
+      s.rows.forEach(r=>{
+        font("400",25); const ll=wrapText(ctx,r.label,LW);
+        font("700",26); const vl=wrapText(ctx,r.value,VW);
+        const sub=r.sub?1:0, h=Math.max(ll.length,vl.length+sub*0.8)*34+18;
+        if(draw){
+          font("400",25); ctx.fillStyle="#5a5168"; ll.forEach((l,i)=>ctx.fillText(l,P+18,y+33+i*34));
+          font("700",26); ctx.fillStyle=r.risk?"#a83a48":"#251a33"; vl.forEach((l,i)=>ctx.fillText(l,VX,y+33+i*34));
+          if(sub){ font("italic 400",22); ctx.fillStyle=r.subRisk?"#a83a48":"#6b6478"; ctx.fillText(r.sub,VX,y+33+vl.length*34-4); }
+          ctx.fillStyle="#e7e1ee"; ctx.fillRect(P,y+h-2,W-2*P,2);
+        }
+        y+=h;
+      });
+      y+=22;
+    });
+    font("400",22); if(draw){ ctx.fillStyle="#6b6478"; ctx.fillText("Données de santé à caractère personnel — édité le "+fmtDate(today())+" · Suivi Diabète 75+",P,y+22); }
+    return y+56;
+  }
+  ctx.font="26px "+FF; const H=layout(false);
+  cv.width=W; cv.height=H; ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H); layout(true);
+  return cv.toDataURL("image/jpeg",0.92);
+}
+function dataURLtoFile(url,name){ const b=atob(url.split(",")[1]), a=new Uint8Array(b.length); for(let i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return new File([a],name,{type:"image/jpeg"}); }
+function doImage(){
+  saveCurrent(false);
+  const d=collectValues();
+  const name="Diabete75_"+(d.ident||"seance").replace(/[^a-z0-9]/gi,"-").replace(/-+/g,"-")+"_"+(d.daterec||today())+".jpg";
+  const url=renderImage(), file=dataURLtoFile(url,name);
+  const fallback=()=>{
+    openModal('<h2>Image de la séance</h2><p>Appui long sur l\'image → « Enregistrer dans Photos ».</p><img src="'+url+'" alt="Séance" style="width:100%;border:1px solid var(--line);border-radius:10px">'
+      +'<a class="btn block" style="margin-top:10px;text-decoration:none" download="'+esc(name)+'" href="'+url+'">Télécharger l\'image</a><button class="btn primary block" id="closeM" style="margin-top:8px;width:100%">Fermer</button>');
+    $("#closeM").addEventListener("click",closeModal);
+  };
+  if(navigator.canShare&&navigator.canShare({files:[file]})) navigator.share({files:[file],title:"Surveillance diabète"}).catch(e=>{ if(e&&e.name!=="AbortError") fallback(); });
+  else fallback();
+}
+
+/* ---------- Sauvegarde / Import ---------- */
+function download(fn,text){ const blob=new Blob([text],{type:"application/json"}), url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=fn; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500); }
+function exportAll(){ if(!fiches.length){ toast("Rien à sauvegarder"); return; } download("suivi-diabete75-"+today()+".json",JSON.stringify(fiches,null,2)); toast("Sauvegarde enregistrée"); }
+function exportOne(){ saveCurrent(false); const r=fiches.find(x=>x.id===currentId);
+  download("diabete75-"+(r.ident||"seance").replace(/[^a-z0-9]/gi,"_")+".json",JSON.stringify([r],null,2)); toast("Séance exportée"); }
+function importFile(file){
+  const fr=new FileReader();
+  fr.onload=()=>{ try{ const arr=JSON.parse(fr.result), list=Array.isArray(arr)?arr:[arr]; let n=0;
+      list.forEach(r=>{ if(!r||typeof r!=="object") return; r.id=(r.id&&!fiches.some(x=>x.id===r.id))?r.id:uid(); r._updated=r._updated||Date.now(); fiches.push(r); n++; });
+      persist(); renderList(); toast(n+(n>1?" séances importées":" séance importée"));
+    }catch(e){ toast("Fichier illisible"); } };
+  fr.readAsText(file);
+}
+
+/* ---------- Modales ---------- */
+function openModal(html){ $("#modal").innerHTML=html; $("#modalBg").classList.add("show"); }
+function closeModal(){ $("#modalBg").classList.remove("show"); }
+$("#modalBg").addEventListener("click",e=>{ if(e.target===$("#modalBg")) closeModal(); });
+function showInfo(){
+  openModal('<h2>Mode d\'emploi</h2><div class="info-block">'
+    +'<p>• Tout reste <b>sur ce téléphone</b>, rien ne part sur internet. L\'outil marche sans réseau.</p>'
+    +'<p>• En tapant le nom d\'un patient déjà vu, la <b>date de naissance, le traitement, la dernière HbA1c et le médecin</b> sont repris de sa séance précédente. Le bouton <b>« Séance suivante »</b> fait la même chose depuis une fiche ouverte.</p>'
+    +'<p>• La <b>prochaine HbA1c</b> est calculée à 3 mois de la date du dernier résultat. Elle passe en rouge quand elle est due.</p>'
+    +'<p>• <b>Copier pour transmissions</b> prépare un texte court à coller dans le logiciel. <b>Image pour le dossier</b> crée une photo à enregistrer dans Photos.</p>'
+    +'<p>• Faites une <b>Sauvegarde</b> régulière (bouton sur la liste).</p>'
+    +'<p>• Version <b>v1</b> (15/10/2026).</p>'
+    +'</div><button class="btn primary block" id="closeM" style="margin-top:6px;width:100%">Compris</button>');
+  $("#closeM").addEventListener("click",closeModal);
+}
+let toastT;
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200); }
+
+$("#btnNew").addEventListener("click",()=>newFiche());
+$("#btnBack").addEventListener("click",()=>{showList();renderList();});
+$("#btnSave").addEventListener("click",()=>saveCurrent(true));
+$("#btnTxt").addEventListener("click",copyText);
+$("#btnImg").addEventListener("click",doImage);
+$("#btnPdf").addEventListener("click",doPrint);
+$("#btnNext").addEventListener("click",()=>{ saveCurrent(false); const id=collectValues().ident; newFiche(id); toast("Nouvelle séance pour "+(id||"ce patient")); });
+$("#btnDelete").addEventListener("click",deleteCurrent);
+$("#btnShareOne").addEventListener("click",exportOne);
+$("#btnExport").addEventListener("click",exportAll);
+$("#btnInfo").addEventListener("click",showInfo);
+$("#btnImport").addEventListener("click",()=>$("#fileInput").click());
+$("#fileInput").addEventListener("change",e=>{ if(e.target.files[0]) importFile(e.target.files[0]); e.target.value=""; });
+
+renderList();
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
