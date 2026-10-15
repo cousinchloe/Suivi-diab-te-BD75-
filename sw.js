@@ -2,7 +2,7 @@
    Aucune donnée patient ne transite ici : seuls les fichiers de l'application
    (page, icônes, manifeste) sont mis en cache. Les séances restent dans le
    localStorage du navigateur et ne sont jamais lues par ce script. */
-const VERSION = "suivi-diabete75-v1";
+const VERSION = "suivi-diabete75-v2";
 const SHELL = [
   "./",
   "./index.html",

@@ -163,6 +163,10 @@
   .hint{font-size:13px;font-weight:600;margin-top:6px;color:var(--muted)}
   .hint.ok{color:var(--low)} .hint.late{color:var(--high)}
   .row3{display:flex;gap:8px} .row3 .field{flex:1;min-width:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{border:1px solid var(--line);background:#fdfcfe;color:var(--accent-deep);border-radius:20px;padding:7px 12px;font-size:14px;font-weight:600;cursor:pointer;min-height:36px}
+  .chip:active{transform:scale(.96)}
+  .chips-lbl{font-size:12px;color:var(--muted);margin-top:8px;font-weight:600}
   .carry{font-size:12.5px;color:var(--accent-deep);background:var(--accent-soft);border-radius:10px;padding:8px 11px;margin:0 0 12px}
 </style>
 </head>
@@ -172,7 +176,7 @@
   <div class="topbar-row">
     <div class="brand">
       <b>Suivi Diabète 75+</b>
-      <span>Séance hebdomadaire · hors-ligne · v1</span>
+      <span>Séance hebdomadaire · hors-ligne · v2</span>
     </div>
     <button class="iconbtn ghost" id="btnInfo" title="Confidentialité et mode d'emploi">i</button>
   </div>
@@ -221,7 +225,6 @@
    Clés distinctes des autres outils (même domaine github.io). */
 const STORE_KEY="suivi_diabete75_v1";
 const NURSE_KEY="suivi_diabete75_infirmiere_v1";
-const UNIT_KEY="suivi_diabete75_unite_v1";
 const $=s=>document.querySelector(s);
 const YN=["Non","Oui"];
 /* Champs repris automatiquement d'une séance à l'autre pour un même patient */
@@ -240,10 +243,9 @@ const SCHEMA=[
    {id:"poids", label:"Poids (kg)", type:"text", dec:true, third:true},
  ]},
  { title:"Glycémies (moyennes du lecteur)", fields:[
-   {id:"unite", label:"Unité du lecteur", type:"seg", opts:["g/L","mg/dL"]},
-   {id:"moy7",  label:"Moy. 7 j", type:"text", dec:true, third:true},
-   {id:"moy14", label:"Moy. 14 j", type:"text", dec:true, third:true},
-   {id:"moy30", label:"Moy. 30 j", type:"text", dec:true, third:true},
+   {id:"moy7",  label:"Moy. 7 j (g/L)", type:"text", dec:true, third:true},
+   {id:"moy14", label:"Moy. 14 j (g/L)", type:"text", dec:true, third:true},
+   {id:"moy30", label:"Moy. 30 j (g/L)", type:"text", dec:true, third:true},
    {id:"hypo",  label:"Hypoglycémie(s) depuis la dernière séance ?", type:"yn", risk:true},
    {id:"hypo_d",label:"Combien, quand, resucrage", type:"text", showIf:["hypo","Oui"]},
  ]},
@@ -382,13 +384,35 @@ function buildForm(){
     });
     flush();
     if(sec.title.startsWith("HbA1c")) body+='<div class="hint" id="hbaHint"></div>';
+    if(sec.title==="Séance") body=body.replace('<div class="row2">','<div id="recentBox"></div><div class="row2">');
     return '<details class="sec" open data-sec="'+i+'"><summary><span class="lbl"><span class="tick"></span>'+esc(sec.title)
       +'</span><span class="arrow">›</span></summary><div class="sec-body">'+body+'</div></details>';
   }).join("");
   $("#formFields").querySelectorAll("input,textarea").forEach(el=>{
     el.addEventListener("input",afterChange); el.addEventListener("change",afterChange);
   });
-  $("#ident").addEventListener("change",()=>{ if(!currentId) carryFrom(lastOf($("#ident").value)); });
+  const tryCarry=()=>{ if(currentId) return; const p=lastOf($("#ident").value); if(p&&p.id!==lastCarried){ lastCarried=p.id; carryFrom(p); } };
+  $("#ident").addEventListener("input",tryCarry);
+  $("#ident").addEventListener("change",tryCarry);
+  renderRecent();
+}
+let lastCarried=null;
+function recentPatients(n){
+  const seen=new Map();
+  [...fiches].sort((a,b)=>(b.daterec||"").localeCompare(a.daterec||"")||(b._updated||0)-(a._updated||0))
+    .forEach(f=>{ const k=keyOf(f.ident); if(k&&!seen.has(k)) seen.set(k,f.ident.trim()); });
+  return [...seen.values()].slice(0,n);
+}
+function renderRecent(){
+  const box=$("#recentBox"); if(!box) return;
+  if(currentId){ box.innerHTML=""; return; }
+  const list=recentPatients(8);
+  if(!list.length){ box.innerHTML=""; return; }
+  box.innerHTML='<div class="chips-lbl">Patients récents</div><div class="chips">'+list.map(n=>'<button type="button" class="chip">'+esc(n)+'</button>').join("")+'</div>';
+  box.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{
+    $("#ident").value=b.textContent; lastCarried=null;
+    const p=lastOf(b.textContent); if(p){ lastCarried=p.id; carryFrom(p); } else afterChange();
+  }));
 }
 function fieldHTML(f){
   const w=' id="w_'+f.id+'"';
@@ -430,8 +454,6 @@ function collectValues(){
 function afterChange(){
   FIELDS.forEach(f=>{ if(f.showIf) $("#w_"+f.id).classList.toggle("hidden",!visible(f)); });
   const d=collectValues();
-  const u=d.unite||"g/L";
-  ["moy7","moy14","moy30"].forEach(k=>{ const l=document.querySelector('label[for="'+k+'"]'); if(l) l.textContent=F(k).label+" ("+u+")"; });
   const h=hbaState(d), hint=$("#hbaHint");
   if(hint){
     if(!h){ hint.className="hint"; hint.textContent=d.hba1c?"Indiquez la date du résultat pour calculer la prochaine.":""; }
@@ -440,7 +462,7 @@ function afterChange(){
   }
   SCHEMA.forEach((sec,i)=>{
     const det=document.querySelector('details[data-sec="'+i+'"]'); if(!det) return;
-    det.classList.toggle("filled",sec.fields.some(f=>{ const v=d[f.id]; return v===true||(typeof v==="string"&&v!==""&&f.id!=="daterec"&&f.id!=="unite"&&f.id!=="infirmiere"); }));
+    det.classList.toggle("filled",sec.fields.some(f=>{ const v=d[f.id]; return v===true||(typeof v==="string"&&v!==""&&f.id!=="daterec"&&f.id!=="infirmiere"); }));
   });
   $("#statusBox").innerHTML=statusHTML(d);
 }
@@ -448,8 +470,7 @@ function carryFrom(prev){
   $("#carryBox").innerHTML="";
   if(!prev) return;
   let n=0;
-  CARRY.forEach(k=>{ const f=F(k), cur=getVal(f); if(!cur&&prev[k]){ setVal(f,prev[k]); n++; } });
-  if(prev.unite) setVal(F("unite"),prev.unite);
+  CARRY.forEach(k=>{ setVal(F(k),prev[k]||""); if(prev[k]) n++; });
   afterChange();
   let msg=n?'Repris de la séance du '+fmtDate(prev.daterec)+' : date de naissance, traitement, HbA1c, médecin. Vérifiez s\'ils ont changé.':"";
   if(prev.adapt==="Oui"&&prev.dose_ap) msg+=(msg?"<br>":"")+'<b>Dose modifiée le '+fmtDate(prev.daterec)+' : '+esc(prev.dose_av||"?")+' → '+esc(prev.dose_ap)+'.</b> Pensez à mettre à jour le traitement.';
@@ -461,9 +482,9 @@ function showForm(){ $("#listView").classList.add("hidden"); $("#formView").clas
 function showList(){ $("#formView").classList.add("hidden"); $("#listView").classList.remove("hidden"); window.scrollTo(0,0); }
 
 function newFiche(ident){
-  currentId=null; showForm(); buildForm(); $("#carryBox").innerHTML="";
-  loadValues({ident:ident||"",daterec:today(),infirmiere:lsGet(NURSE_KEY),unite:lsGet(UNIT_KEY)||"g/L"});
-  if(ident) carryFrom(lastOf(ident));
+  currentId=null; lastCarried=null; showForm(); buildForm(); $("#carryBox").innerHTML="";
+  loadValues({ident:ident||"",daterec:today(),infirmiere:lsGet(NURSE_KEY)});
+  if(ident){ const p=lastOf(ident); if(p){ lastCarried=p.id; carryFrom(p); } }
 }
 function openFiche(id){ currentId=id; const r=fiches.find(x=>x.id===id)||{}; showForm(); buildForm(); $("#carryBox").innerHTML=""; loadValues(r); }
 function saveCurrent(goBack){
@@ -471,7 +492,6 @@ function saveCurrent(goBack){
   if(currentId){ const i=fiches.findIndex(r=>r.id===currentId); fiches[i]={...fiches[i],...data,_updated:now}; }
   else { currentId=uid(); fiches.push({id:currentId,...data,_created:now,_updated:now}); }
   if(data.infirmiere) lsSet(NURSE_KEY,data.infirmiere);
-  if(data.unite) lsSet(UNIT_KEY,data.unite);
   persist();
   if(goBack){ showList(); renderList(); toast("Séance enregistrée"); }
 }
@@ -483,7 +503,7 @@ function deleteCurrent(){
 
 /* ---------- Texte pour les transmissions ---------- */
 function buildText(d){
-  const L=[], u=d.unite||"g/L", j=a=>a.filter(Boolean).join(" · ");
+  const L=[], u="g/L", j=a=>a.filter(Boolean).join(" · ");
   L.push("Surveillance diabète 75+ du "+fmtDate(d.daterec||today())+(d.infirmiere?" ("+d.infirmiere+")":""));
   const c=j([d.ta?"TA "+d.ta:"",d.pouls?"pouls "+d.pouls:"",d.poids?"poids "+d.poids+" kg":""]); if(c) L.push(c);
   const g=j([d.moy7?"7 j "+d.moy7:"",d.moy14?"14 j "+d.moy14:"",d.moy30?"30 j "+d.moy30:""]);
@@ -514,13 +534,13 @@ function rowsFor(sec,d){
   const rows=[];
   if(sec.title==="Directives") return rows;
   sec.fields.forEach(f=>{
-    if(["ident","daterec","ddn","infirmiere","unite"].includes(f.id)) return;
+    if(["ident","daterec","ddn","infirmiere"].includes(f.id)) return;
     let v=d[f.id]; if(f.type==="check") v=v?"Oui":""; if(f.type==="date") v=fmtDate(v);
     if(v===""||v==null) return;
-    if(["moy7","moy14","moy30"].includes(f.id)) v=v+" "+(d.unite||"g/L");
+    if(["moy7","moy14","moy30"].includes(f.id)) v=v+" g/L";
     if(f.id==="hba1c") v=v+" %";
     if(f.id==="poids") v=v+" kg";
-    const r={label:f.label.replace(/ \?$/,"").replace(/ \((kg|%)\)$/,""),value:v,risk:!!(f.risk&&v==="Oui")};
+    const r={label:f.label.replace(/ \?$/,"").replace(/ \((kg|%|g\/L)\)$/,""),value:v,risk:!!(f.risk&&v==="Oui")};
     if(f.id==="hba1c_date"){ const h=hbaState(d); if(h){ r.sub=h.late?"À refaire (prévue vers le "+fmtDate(h.next)+")":"Prochaine vers le "+fmtDate(h.next); r.subRisk=h.late; } }
     rows.push(r);
   });
@@ -656,11 +676,11 @@ $("#modalBg").addEventListener("click",e=>{ if(e.target===$("#modalBg")) closeMo
 function showInfo(){
   openModal('<h2>Mode d\'emploi</h2><div class="info-block">'
     +'<p>• Tout reste <b>sur ce téléphone</b>, rien ne part sur internet. L\'outil marche sans réseau.</p>'
-    +'<p>• En tapant le nom d\'un patient déjà vu, la <b>date de naissance, le traitement, la dernière HbA1c et le médecin</b> sont repris de sa séance précédente. Le bouton <b>« Séance suivante »</b> fait la même chose depuis une fiche ouverte.</p>'
+    +'<p>• Votre <b>prénom</b> est retenu sur ce téléphone. Les <b>patients récents</b> s\'affichent en boutons sous le nom : un appui suffit. En tapant le nom d\'un patient déjà vu, la <b>date de naissance, le traitement, la dernière HbA1c et le médecin</b> sont repris de sa séance précédente. Le bouton <b>« Séance suivante »</b> fait la même chose depuis une fiche ouverte.</p>'
     +'<p>• La <b>prochaine HbA1c</b> est calculée à 3 mois de la date du dernier résultat. Elle passe en rouge quand elle est due.</p>'
     +'<p>• <b>Copier pour transmissions</b> prépare un texte court à coller dans le logiciel. <b>Image pour le dossier</b> crée une photo à enregistrer dans Photos.</p>'
     +'<p>• Faites une <b>Sauvegarde</b> régulière (bouton sur la liste).</p>'
-    +'<p>• Version <b>v1</b> (15/10/2026).</p>'
+    +'<p>• Version <b>v2</b> (15/10/2026).</p>'
     +'</div><button class="btn primary block" id="closeM" style="margin-top:6px;width:100%">Compris</button>');
   $("#closeM").addEventListener("click",closeModal);
 }
