@@ -176,7 +176,7 @@
   <div class="topbar-row">
     <div class="brand">
       <b>Suivi Diabète 75+</b>
-      <span>Séance hebdomadaire · hors-ligne · v2</span>
+      <span>Séance hebdomadaire · hors-ligne · v3</span>
     </div>
     <button class="iconbtn ghost" id="btnInfo" title="Confidentialité et mode d'emploi">i</button>
   </div>
@@ -680,7 +680,7 @@ function showInfo(){
     +'<p>• La <b>prochaine HbA1c</b> est calculée à 3 mois de la date du dernier résultat. Elle passe en rouge quand elle est due.</p>'
     +'<p>• <b>Copier pour transmissions</b> prépare un texte court à coller dans le logiciel. <b>Image pour le dossier</b> crée une photo à enregistrer dans Photos.</p>'
     +'<p>• Faites une <b>Sauvegarde</b> régulière (bouton sur la liste).</p>'
-    +'<p>• Version <b>v2</b> (15/10/2026).</p>'
+    +'<p>• Version <b>v3</b> (15/10/2026).</p>'
     +'</div><button class="btn primary block" id="closeM" style="margin-top:6px;width:100%">Compris</button>');
   $("#closeM").addEventListener("click",closeModal);
 }
@@ -702,8 +702,25 @@ $("#btnImport").addEventListener("click",()=>$("#fileInput").click());
 $("#fileInput").addEventListener("change",e=>{ if(e.target.files[0]) importFile(e.target.files[0]); e.target.value=""; });
 
 renderList();
+/* Mise à jour automatique : la page est toujours chargée depuis le réseau quand il y en a.
+   Si l'app était restée ouverte en arrière-plan, un bandeau propose la nouvelle version. */
+function showUpdate(){
+  if($("#updBar")) return;
+  const b=document.createElement("div");
+  b.id="updBar";
+  b.style.cssText="position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:70;background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25)";
+  b.innerHTML='<span>Nouvelle version disponible</span><button style="border:none;background:#fff;color:var(--accent-deep);font-weight:700;border-radius:10px;padding:9px 13px;font-size:14px">Mettre à jour</button>';
+  b.querySelector("button").addEventListener("click",()=>{
+    try{ if(!$("#formView").classList.contains("hidden")){ const d=collectValues(); if(currentId||d.ident) saveCurrent(false); } }catch(e){}
+    location.reload();
+  });
+  document.body.appendChild(b);
+}
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+  let hadCtrl=!!navigator.serviceWorker.controller, reg=null;
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").then(r=>{ reg=r; }).catch(()=>{}); });
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(hadCtrl) showUpdate(); hadCtrl=true; });
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&reg) reg.update().catch(()=>{}); });
 }
 </script>
 </body>
